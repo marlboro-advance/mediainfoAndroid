@@ -1,0 +1,88 @@
+name: Checks
+
+on: [push, pull_request]
+
+jobs:
+  Unix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Dependencies
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            brew install automake libtool
+          fi
+      - name: Configure
+        run: |
+          cd Project/GNU/Library
+          autoreconf -if
+          ./configure
+      - name: Build
+        run: |
+          cd Project/GNU/Library
+          make -j4
+      - name: Check
+        run: |
+          cd Project/GNU/Library
+          make check
+      - name: CMake Build
+        run: |
+          mkdir Project/CMake/Build
+          cd Project/CMake/Build
+          cmake -DBUILD_ZENLIB=1 ..
+          make -j4
+
+  Windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        architecture: [ Win32, x64, ARM64 ]
+      fail-fast: false
+    steps:
+      - name: Checkout ZenLib
+        uses: actions/checkout@v5
+        with:
+          path: ZenLib
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+      - name: Build
+        run: msbuild -p:Configuration=Release -p:Platform=${{ matrix.architecture }} ${{ github.workspace }}\ZenLib\Project\MSVC2022\ZenLib_MSVC.sln -verbosity:quiet -warnaserror
+
+  MinGW:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - platform: Win32
+            msystem: MINGW32
+          - platform: x64
+            msystem: UCRT64
+      fail-fast: false
+    env:
+      GENERATOR: "Unix Makefiles"
+      CONFIGURATION: "Release"
+      CXXFLAGS: -Werror
+    steps:
+      - name: Checkout ZenLib
+        uses: actions/checkout@v5
+      - name: Setup MSYS2 environment
+        uses: msys2/setup-msys2@v2
+        with:
+          release: false
+          msystem: ${{ matrix.msystem }}
+          install: make
+      - name: Configure CMake project
+        shell: bash
+        run: |
+          # Set the build configuration flag for CMake
+          cmake -S Project/CMake -B build -G "$GENERATOR" -DCMAKE_BUILD_TYPE=$CONFIGURATION
+      - name: Build project using make
+        shell: bash
+        run: make -C build -j4

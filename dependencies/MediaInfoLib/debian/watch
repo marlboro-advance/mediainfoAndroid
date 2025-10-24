@@ -1,0 +1,3 @@
+version=3
+
+http://mediaarea.net/download/source/libmediainfo/([0-9.]+)/libmediainfo_([0-9.]+)\.tar\.xz
