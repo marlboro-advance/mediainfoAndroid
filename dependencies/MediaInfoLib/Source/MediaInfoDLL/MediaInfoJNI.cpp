@@ -298,7 +298,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
 
     jclass cls = NULL;
 #ifdef __ANDROID__
-    cls = env->FindClass("net/mediaarea/mediainfo/MediaInfo");
+    cls = env->FindClass("net/mediaarea/mediainfo/lib/MediaInfo");
 #else
     cls = env->FindClass("MediaInfo");
 #endif
