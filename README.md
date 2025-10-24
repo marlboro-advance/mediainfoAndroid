@@ -75,6 +75,8 @@ dependencies {
 The easiest way to get media information is using the `MediaInfoUtil` class:
 
 ```kotlin
+package com.example.mediainfo
+
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import net.mediaarea.mediainfo.lib.MediaInfoUtil
@@ -96,6 +98,8 @@ fun getMediaInfo(uri: Uri) {
 ### Get Different Output Formats
 
 ```kotlin
+package com.example.mediainfo
+
 import net.mediaarea.mediainfo.lib.MediaInfoUtil
 
 // XML format (most detailed)
@@ -114,6 +118,8 @@ val htmlOutput = MediaInfoUtil.getMediaInfo(fd, "video.mp4", "HTML")
 ### Check Library Version
 
 ```kotlin
+package com.example.mediainfo
+
 import net.mediaarea.mediainfo.lib.MediaInfoUtil
 
 val version = MediaInfoUtil.getVersion()
@@ -127,6 +133,8 @@ println("MediaInfo version: $version")
 For more control and to query specific parameters:
 
 ```kotlin
+package com.example.mediainfo
+
 import net.mediaarea.mediainfo.lib.MediaInfo
 
 val mi = MediaInfo()
@@ -187,6 +195,8 @@ The library supports multiple output formats through the `Inform` option:
 Example with custom format:
 
 ```kotlin
+package com.example.mediainfo
+
 import net.mediaarea.mediainfo.lib.MediaInfo
 
 val mi = MediaInfo()
@@ -220,6 +230,8 @@ The library supports the following stream types:
 Here's a complete example in an Android Activity:
 
 ```kotlin
+package com.example.mediainfo
+
 import android.net.Uri
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
