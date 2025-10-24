@@ -56,7 +56,7 @@ Add the MediaInfo library to your app's `build.gradle` or `build.gradle.kts`:
 
 ```groovy
 dependencies {
-    implementation 'com.github.marlboro-advance:mediainfoAndroid:v1.0.0'
+    implementation 'com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix'
 }
 ```
 
@@ -64,7 +64,7 @@ dependencies {
 
 ```kotlin
 dependencies {
-    implementation("com.github.marlboro-advance:mediainfoAndroid:v1.0.0")
+    implementation("com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix")
 }
 ```
 
