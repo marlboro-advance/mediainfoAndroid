@@ -6,102 +6,220 @@
 
 package net.mediaarea.mediainfo.lib
 
+import java.io.InputStream
+
 /**
- * Utility class providing simplified access to MediaInfo functionality
- * This class provides convenience methods for common use cases
+ * Utility class providing simplified access to MediaInfo functionality.
+ * Supports analyzing local file descriptors, file paths, input streams,
+ * and remote network streams (HTTP/HTTPS, NAS, WebDAV, SMB).
  */
 class MediaInfoUtil {
 
     companion object {
-        /**
-         * Analyzes a media file and returns XML output
-         * This is the simplest way to get complete media information in XML format
-         *
-         * @param fd File descriptor of the media file (obtained from ParcelFileDescriptor.detachFd())
-         * @param filename Name of the file (for reference only, can be any string)
-         * @return Complete media information as XML string
-         *
-         * Example usage:
-         * ```
-         * val pfd = contentResolver.openFileDescriptor(uri, "r")
-         * val fd = pfd?.detachFd() ?: return
-         * val xmlOutput = MediaInfoUtil.getMediaInfoXml(fd, "video.mp4")
-         * pfd?.close()
-         * ```
-         */
-        @JvmStatic
-        fun getMediaInfoXml(fd: Int, filename: String): String {
-            val mi = MediaInfo()
-
-            // Configure for XML output
-            mi.Option("Inform", "MIXML")
-
-            // Open and analyze file
-            mi.Open(fd, filename)
-
-            // Get XML output
-            val xmlOutput = mi.Inform()
-
-            // Close
-            mi.Close()
-
-            return xmlOutput
-        }
 
         /**
-         * Get MediaInfo library version
-         * @return Version string (e.g., "24.06")
-         */
+          * Get MediaInfo library version
+          * @return Version string (e.g., "24.06")
+          */
         @JvmStatic
         fun getVersion(): String {
-            val mi = MediaInfo()
-            return mi.Option("Info_Version").replace("MediaInfoLib - v", "")
+            return MediaInfo().use { mi ->
+                mi.Option("Info_Version").replace("MediaInfoLib - v", "")
+            }
         }
 
         /**
-         * Get list of supported output formats
-         * @return Comma-separated list of format names
-         */
+          * Get list of supported output formats
+          * @return Comma-separated list of format names
+          */
         @JvmStatic
         fun getSupportedFormats(): String {
-            val mi = MediaInfo()
-            return mi.Option("Info_OutputFormats")
+            return MediaInfo().use { mi ->
+                mi.Option("Info_OutputFormats")
+            }
+        }
+
+        // ====================================================================
+        // File Descriptor (Android ContentResolver / ParcelFileDescriptor)
+        // ====================================================================
+
+        /**
+         * Analyzes a media file from a file descriptor and returns XML output.
+         *
+         * @param fd File descriptor of the media file (e.g. from `ParcelFileDescriptor.detachFd()`).
+         * @param filename Name of the file (for reference only, can be any string).
+         * @return Complete media information as XML string.
+         */
+        @JvmStatic
+        fun getMediaInfoXml(fd: Int, filename: String = ""): String {
+            return getMediaInfo(fd, filename, "MIXML")
         }
 
         /**
-         * Analyzes a media file and returns output in the specified format
+         * Analyzes a media file from a file descriptor and returns output in the specified format.
          *
-         * @param fd File descriptor of the media file
-         * @param filename Name of the file (for reference only)
-         * @param format Output format (e.g., "MIXML", "JSON", "Text", "HTML")
-         * @return Media information in the specified format
-         *
-         * Available formats:
-         * - MIXML: XML format (default and recommended)
-         * - JSON: JSON format
-         * - Text: Human-readable text
-         * - HTML: HTML format
-         * - XML: Alternative XML format
-         * - PBCore: PBCore 2.0 XML format
-         * - EBUCore: EBUCore 1.8 XML format
+         * @param fd File descriptor of the media file.
+         * @param filename Name of the file (for reference only).
+         * @param format Output format (e.g., "MIXML", "JSON", "Text", "HTML").
+         * @return Media information in the specified format.
          */
         @JvmStatic
-        fun getMediaInfo(fd: Int, filename: String, format: String = "MIXML"): String {
-            val mi = MediaInfo()
+        fun getMediaInfo(fd: Int, filename: String = "", format: String = "MIXML"): String {
+            return MediaInfo().use { mi ->
+                mi.Option("Inform", format)
+                mi.Open(fd, filename)
+                mi.Inform()
+            }
+        }
 
-            // Configure output format
-            mi.Option("Inform", format)
+        // ====================================================================
+        // File Path
+        // ====================================================================
 
-            // Open and analyze file
-            mi.Open(fd, filename)
+        /**
+         * Analyzes a local media file by path and returns XML output.
+         *
+         * @param filePath Absolute path to the media file.
+         * @return Complete media information as XML string.
+         */
+        @JvmStatic
+        fun getMediaInfoXml(filePath: String): String {
+            return getMediaInfo(filePath, "MIXML")
+        }
 
-            // Get output
-            val output = mi.Inform()
+        /**
+         * Analyzes a local media file by path and returns output in the specified format.
+         *
+         * @param filePath Absolute path to the media file.
+         * @param format Output format (e.g., "MIXML", "JSON", "Text", "HTML").
+         * @return Media information in the specified format.
+         */
+        @JvmStatic
+        fun getMediaInfo(filePath: String, format: String = "MIXML"): String {
+            return MediaInfo().use { mi ->
+                mi.Option("Inform", format)
+                mi.Open(filePath)
+                mi.Inform()
+            }
+        }
 
-            // Close
-            mi.Close()
+        // ====================================================================
+        // SeekableSource (HTTP, NAS, SMB, WebDAV, Custom Streams)
+        // ====================================================================
 
-            return output
+        /**
+         * Analyzes a media stream from any [SeekableSource] and returns XML output.
+         *
+         * @param source The seekable stream source to read from.
+         * @param filename Optional filename for reference.
+         * @return Complete media information as XML string.
+         */
+        @JvmStatic
+        fun getMediaInfoXml(source: SeekableSource, filename: String = ""): String {
+            return getMediaInfo(source, filename, "MIXML")
+        }
+
+        /**
+         * Analyzes a media stream from any [SeekableSource] and returns output in the specified format.
+         *
+         * @param source The seekable stream source to read from.
+         * @param filename Optional filename for reference.
+         * @param format Output format (e.g., "MIXML", "JSON", "Text", "HTML").
+         * @return Media information in the specified format.
+         */
+        @JvmStatic
+        fun getMediaInfo(source: SeekableSource, filename: String = "", format: String = "MIXML"): String {
+            return MediaInfo().use { mi ->
+                mi.Option("Inform", format)
+                mi.Open(source, filename)
+                mi.Inform()
+            }
+        }
+
+        // ====================================================================
+        // Network Streaming URLs (HTTP / HTTPS / NAS Web Shares)
+        // ====================================================================
+
+        /**
+         * Analyzes a remote media file over HTTP/HTTPS using HTTP range requests and returns XML output.
+         * Only headers and metadata are fetched (~1-2 MB), rather than downloading the entire file.
+         *
+         * @param url HTTP/HTTPS URL of the remote media file (e.g. NAS HTTP, WebDAV, Jellyfin, Plex).
+         * @param headers Optional custom HTTP headers (Authorization, User-Agent, etc.).
+         * @param filename Optional filename for reference.
+         * @return Complete media information as XML string.
+         */
+        @JvmStatic
+        fun getMediaInfoXml(
+            url: String,
+            headers: Map<String, String> = emptyMap(),
+            filename: String = ""
+        ): String {
+            return getMediaInfo(url, headers, filename, "MIXML")
+        }
+
+        /**
+         * Analyzes a remote media file over HTTP/HTTPS using HTTP range requests and returns output in the specified format.
+         *
+         * @param url HTTP/HTTPS URL of the remote media file.
+         * @param headers Optional custom HTTP headers (Authorization, User-Agent, etc.).
+         * @param filename Optional filename for reference.
+         * @param format Output format (e.g., "MIXML", "JSON", "Text", "HTML").
+         * @return Media information in the specified format.
+         */
+        @JvmStatic
+        fun getMediaInfo(
+            url: String,
+            headers: Map<String, String> = emptyMap(),
+            filename: String = "",
+            format: String = "MIXML"
+        ): String {
+            val effectiveName = if (filename.isNotEmpty()) filename else url.substringAfterLast('/')
+            return HttpSeekableSource(url, headers).use { source ->
+                getMediaInfo(source, effectiveName, format)
+            }
+        }
+
+        // ====================================================================
+        // Input Stream (Sequential streams)
+        // ====================================================================
+
+        /**
+         * Analyzes a media file from a sequential [InputStream] and returns XML output.
+         *
+         * @param inputStream The input stream to read from.
+         * @param totalSize Total stream size in bytes, or -1L if unknown.
+         * @param filename Optional filename for reference.
+         * @return Complete media information as XML string.
+         */
+        @JvmStatic
+        fun getMediaInfoXml(
+            inputStream: InputStream,
+            totalSize: Long = -1L,
+            filename: String = ""
+        ): String {
+            return getMediaInfo(inputStream, totalSize, filename, "MIXML")
+        }
+
+        /**
+         * Analyzes a media file from a sequential [InputStream] and returns output in the specified format.
+         *
+         * @param inputStream The input stream to read from.
+         * @param totalSize Total stream size in bytes, or -1L if unknown.
+         * @param filename Optional filename for reference.
+         * @param format Output format (e.g., "MIXML", "JSON", "Text", "HTML").
+         * @return Media information in the specified format.
+         */
+        @JvmStatic
+        fun getMediaInfo(
+            inputStream: InputStream,
+            totalSize: Long = -1L,
+            filename: String = "",
+            format: String = "MIXML"
+        ): String {
+            return InputStreamSeekableSource(inputStream, totalSize).use { source ->
+                getMediaInfo(source, filename, format)
+            }
         }
     }
 }

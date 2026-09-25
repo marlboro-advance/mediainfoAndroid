@@ -6,11 +6,13 @@
 
 package net.mediaarea.mediainfo.lib
 
+import java.io.Closeable
+
 /**
  * MediaInfo JNI interface for analyzing media files
  * This class provides direct access to the native MediaInfoLib library
  */
-class MediaInfo {
+class MediaInfo : AutoCloseable, Closeable {
     companion object {
         // Load native libraries
         init {
@@ -48,16 +50,88 @@ class MediaInfo {
     external fun Init(): Long
     external fun Destroy(): Int
     private external fun OpenFd(fd: Int, name: String): Int
-    private external fun Open(name: String): Int
 
     /**
-     * Open a media file for analysis
-     * @param fd File descriptor of the media file
-     * @param name Name of the file (for reference)
+     * Open a media file by file path
+     * @param name Path to the media file
      * @return 1 if successful, 0 otherwise
      */
-    fun Open(fd: Int, name: String): Int {
+    external fun Open(name: String): Int
+
+    /**
+     * Open a media file for analysis using a file descriptor
+     * @param fd File descriptor of the media file
+     * @param name Name of the file (for reference)
+     * @return 0 if successful
+     */
+    fun Open(fd: Int, name: String = ""): Int {
         return OpenFd(fd, name)
+    }
+
+    /**
+     * Open a media stream from any [SeekableSource] (HTTP/HTTPS, NAS, custom stream).
+     * Analyzes the stream incrementally by seeking to headers and index tables
+     * without downloading the entire file.
+     *
+     * @param source The seekable stream source to read from.
+     * @param name Optional filename or URL for reference.
+     * @return 0 on success.
+     */
+    fun Open(source: SeekableSource, name: String = ""): Int {
+        if (name.isNotEmpty()) {
+            Option("File_FileName", name)
+        }
+        val totalSize = source.size
+        val initSize = if (totalSize > 0) totalSize else -1L
+        Open_Buffer_Init(initSize, 0L)
+
+        val buffer = ByteArray(64 * 1024)
+
+        try {
+            while (true) {
+                val bytesRead = source.read(buffer, 0, buffer.size)
+                if (bytesRead < 0) {
+                    break
+                }
+
+                val status = Open_Buffer_Continue(buffer, bytesRead.toLong())
+
+                // Bit 3 (0x08) set indicates parsing is complete
+                if ((status and 0x08) != 0) {
+                    break
+                }
+
+                // Check if MediaInfo requests to jump to another position
+                val seekTo = Open_Buffer_Continue_GoTo_Get()
+                if (seekTo != -1L) {
+                    source.seek(seekTo)
+                    Open_Buffer_Init(initSize, seekTo)
+                    continue
+                }
+
+                if (bytesRead == 0) {
+                    break
+                }
+            }
+        } finally {
+            Open_Buffer_Finalize()
+        }
+        return 0
+    }
+
+    /**
+     * Open a remote media file from an HTTP/HTTPS URL using range requests.
+     *
+     * @param url HTTP/HTTPS URL of the media file.
+     * @param headers Optional custom HTTP headers (Authorization, User-Agent, etc.).
+     * @param filename Optional filename for reference.
+     * @return 0 on success.
+     */
+    fun Open(url: String, headers: Map<String, String> = emptyMap(), filename: String = ""): Int {
+        val effectiveName = if (filename.isNotEmpty()) filename else url.substringAfterLast('/')
+        return HttpSeekableSource(url, headers).use { source ->
+            Open(source, effectiveName)
+        }
     }
 
     external fun Open_Buffer_Init(fileSize: Long, fileOffset: Long): Int
@@ -155,4 +229,18 @@ class MediaInfo {
     fun Count_Get(streamKind: Stream, streamNumber: Int = -1): Int {
         return Count_Get(streamKind.ordinal, streamNumber)
     }
+
+    /**
+     * Closes the open media file and destroys the native MediaInfo instance
+     * to prevent memory leaks.
+     */
+    override fun close() {
+        try {
+            Close()
+        } catch (_: Exception) {}
+        try {
+            Destroy()
+        } catch (_: Exception) {}
+    }
 }
+

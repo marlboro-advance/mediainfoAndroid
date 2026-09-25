@@ -126,6 +126,69 @@ val version = MediaInfoUtil.getVersion()
 println("MediaInfo version: $version")
 ```
 
+### Network Streaming & NAS Media (HTTP / HTTPS / WebDAV)
+
+Analyze media files located on a remote server, NAS, Jellyfin, Plex, or WebDAV share without downloading the entire file. Uses HTTP Range requests under the hood to fetch only headers and index chunks (~1–2 MB):
+
+```kotlin
+import net.mediaarea.mediainfo.lib.MediaInfoUtil
+
+// Analyze over HTTP/HTTPS (e.g. from NAS or web share)
+val xmlOutput = MediaInfoUtil.getMediaInfoXml("https://example.com/videos/movie.mkv")
+
+// With custom authorization or headers
+val customHeaders = mapOf(
+    "Authorization" to "Bearer your_token_here",
+    "User-Agent" to "mpvEx/1.0"
+)
+val jsonOutput = MediaInfoUtil.getMediaInfo(
+    url = "http://192.168.1.100:8080/nas/sample.mp4",
+    headers = customHeaders,
+    format = "JSON"
+)
+```
+
+### Direct File Path
+
+```kotlin
+import net.mediaarea.mediainfo.lib.MediaInfoUtil
+
+// Direct local file path
+val xmlOutput = MediaInfoUtil.getMediaInfoXml("/sdcard/Movies/sample.mkv")
+```
+
+### Custom Seekable Streams (SMB, Cloud, or Custom Protocols)
+
+Implement `SeekableSource` to feed any custom random-access storage (e.g. SMBJ / JCIFS for Windows/Samba network shares) directly to MediaInfo:
+
+```kotlin
+import net.mediaarea.mediainfo.lib.MediaInfoUtil
+import net.mediaarea.mediainfo.lib.SeekableSource
+
+val source = object : SeekableSource {
+    override val size: Long get() = smbFile.length()
+    override var position: Long = 0L
+    
+    override fun seek(position: Long) {
+        smbRandomAccessFile.seek(position)
+        this.position = position
+    }
+    
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        val n = smbRandomAccessFile.read(buffer, offset, length)
+        if (n > 0) position += n
+        return n
+    }
+    
+    override fun close() {
+        smbRandomAccessFile.close()
+    }
+}
+
+val xmlInfo = MediaInfoUtil.getMediaInfoXml(source, "nas_movie.mkv")
+```
+
+
 ## Advanced Usage
 
 ### Using the Low-Level API
