@@ -51,7 +51,13 @@ dependencies {
 
 mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, true)
-    signAllPublications()
+    def hasSigningKey = project.hasProperty("signingInMemoryKey") ||
+                        project.hasProperty("signing.keyId") ||
+                        System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKey") != null ||
+                        System.getenv("SIGNING_KEY") != null
+    if (hasSigningKey) {
+        signAllPublications()
+    }
 
     pom {
         name = "mediainfoAndroid"
