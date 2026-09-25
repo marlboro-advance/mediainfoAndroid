@@ -81,7 +81,7 @@ class HttpSeekableSource(
                 }
 
                 currentEffectiveUrl = probeUrl
-                val contentLength = connection.contentLengthLong
+                val contentLength = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
                 if (contentLength > 0) {
                     size = contentLength
                 }
@@ -195,7 +195,7 @@ class HttpSeekableSource(
                     }
                 }
                 if (size <= 0 && position == 0L) {
-                    val len = conn.contentLengthLong
+                    val len = conn.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
                     if (len > 0) size = len
                 }
             }
