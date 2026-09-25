@@ -1,17 +1,18 @@
-name: Build and Release AAR
+name: Build and Release
 
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,44 +39,59 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build AAR
-        run: ./gradlew :mediainfo-lib:assembleRelease
-
       - name: Get version from tag
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Rename AAR
         run: |
-          cp mediainfo-lib/build/outputs/aar/mediainfo-lib-release.aar mediainfo-lib-${{ steps.get_version.outputs.VERSION }}.aar
+          RAW_VERSION="${GITHUB_REF#refs/tags/}"
+          CLEAN_VERSION="${RAW_VERSION#v}"
+          echo "VERSION=$RAW_VERSION" >> $GITHUB_OUTPUT
+          echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create Release
+      - name: Build AAR and Publish to Maven Central
+        run: |
+          ./gradlew :mediainfo-lib:publishAndReleaseToMavenCentral \
+            -PVERSION_NAME=${{ steps.get_version.outputs.CLEAN_VERSION }} \
+            --no-daemon \
+            --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+
+      - name: Rename AAR for GitHub Release
+        run: |
+          cp mediainfo-lib/build/outputs/aar/mediainfo-lib-release.aar mediainfo-android-${{ steps.get_version.outputs.VERSION }}.aar
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: mediainfo-lib-${{ steps.get_version.outputs.VERSION }}.aar
+          files: mediainfo-android-${{ steps.get_version.outputs.VERSION }}.aar
           body: |
-            MediaInfo Android Library ${{ steps.get_version.outputs.VERSION }}
-            
-            ## Installation
-            
-            Download the AAR file and add it to your project:
-            
-            ```gradle
+            ## MediaInfo Android Library ${{ steps.get_version.outputs.VERSION }}
+
+            ### Maven Central
+
+            ```groovy
             dependencies {
-                implementation files('libs/mediainfo-lib-${{ steps.get_version.outputs.VERSION }}.aar')
+                implementation 'io.github.marlboro-advance:mediainfo-android:${{ steps.get_version.outputs.CLEAN_VERSION }}'
             }
             ```
-            
-            ## Usage
-            
+
+            Or via Kotlin DSL:
             ```kotlin
-            import net.mediaarea.mediainfo.lib.MediaInfoUtil
-            
-            val pfd = contentResolver.openFileDescriptor(uri, "r")
-            val fd = pfd?.detachFd() ?: return
-            val xmlOutput = MediaInfoUtil.getMediaInfoXml(fd, "video.mp4")
-            pfd?.close()
+            dependencies {
+                implementation("io.github.marlboro-advance:mediainfo-android:${{ steps.get_version.outputs.CLEAN_VERSION }}")
+            }
+            ```
+
+            ### Standalone AAR Installation
+            Download the attached `mediainfo-android-${{ steps.get_version.outputs.VERSION }}.aar` and place it in your `app/libs` directory:
+            ```groovy
+            dependencies {
+                implementation files('libs/mediainfo-android-${{ steps.get_version.outputs.VERSION }}.aar')
+            }
             ```
           draft: false
           prerelease: false
-

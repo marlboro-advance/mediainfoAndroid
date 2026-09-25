@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
+    id 'com.vanniktech.maven.publish'
 }
 
 android {
@@ -47,3 +48,35 @@ android {
 dependencies {
     // No dependencies needed - just Kotlin stdlib (automatically included)
 }
+
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, true)
+    signAllPublications()
+
+    pom {
+        name = "mediainfoAndroid"
+        description = "An Android library wrapper for MediaInfoLib, providing comprehensive media analysis capabilities."
+        inceptionYear = "2024"
+        url = "https://github.com/marlboro-advance/mediainfoAndroid"
+        licenses {
+            license {
+                name = "BSD-2-Clause"
+                url = "https://opensource.org/licenses/BSD-2-Clause"
+                distribution = "repo"
+            }
+        }
+        developers {
+            developer {
+                id = "marlboro-advance"
+                name = "MarlboroAdvance"
+                url = "https://github.com/marlboro-advance"
+            }
+        }
+        scm {
+            url = "https://github.com/marlboro-advance/mediainfoAndroid"
+            connection = "scm:git:git://github.com/marlboro-advance/mediainfoAndroid.git"
+            developerConnection = "scm:git:ssh://git@github.com/marlboro-advance/mediainfoAndroid.git"
+        }
+    }
+}
+

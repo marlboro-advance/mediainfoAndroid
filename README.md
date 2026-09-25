@@ -16,17 +16,32 @@ video, audio, and image files directly in your Android app.
 - **Android Optimized** - Supports all major architectures (arm64-v8a, armeabi-v7a, x86, x86_64)
 - **Modern Android** - Supports Android 5.0 (API 21) and above
 
-## Installation
+### Maven Central (Recommended)
 
-### Step 1: Add JitPack repository
+Add `mavenCentral()` to your repositories, then add the dependency:
+
+**Groovy (`build.gradle`):**
+
+```groovy
+dependencies {
+    implementation 'io.github.marlboro-advance:mediainfo-android:1.0.1'
+}
+```
+
+**Kotlin (`build.gradle.kts`):**
+
+```kotlin
+dependencies {
+    implementation("io.github.marlboro-advance:mediainfo-android:1.0.1")
+}
+```
+
+### JitPack (Alternative)
 
 Add the JitPack repository to your project's `settings.gradle` or `settings.gradle.kts`:
 
-**Groovy (`settings.gradle`):**
-
 ```groovy
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
@@ -35,36 +50,10 @@ dependencyResolutionManagement {
 }
 ```
 
-**Kotlin (`settings.gradle.kts`):**
-
-```kotlin
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-        maven { url = uri("https://jitpack.io") }
-    }
-}
-```
-
-### Step 2: Add the dependency
-
-Add the MediaInfo library to your app's `build.gradle` or `build.gradle.kts`:
-
-**Groovy (`build.gradle`):**
-
+And add:
 ```groovy
 dependencies {
-    implementation 'com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix'
-}
-```
-
-**Kotlin (`build.gradle.kts`):**
-
-```kotlin
-dependencies {
-    implementation("com.github.marlboro-advance:mediainfoAndroid:v1.0.0-fix")
+    implementation 'com.github.marlboro-advance:mediainfoAndroid:1.0.1'
 }
 ```
 
